@@ -2,20 +2,20 @@
 library(fda)
 library(MASS)
 
-# response            : a matrix containing response curves (center)
-# response_l          : a matrix containing lower limits of the response curves
-# response_u          : a matrix containing upper limits of the response curves
-# response_r          : a matrix containing half-ranges of the response curves
-# predictor           : a list whose elements consist of predictors (center)
-# predictor_l         : a list whose elements consist of lower limits of the predictors
-# predictor_u         : a list whose elements consist of upper limits of the predictors
-# predictor_r         : a list whose elements consist of half-ranges of the predictors
-# predictor_test      : a list whose elements consist of predictors (center) for the test sample
-# predictor_test_l    : a list whose elements consist of lower limits of the predictors for the test sample
-# predictor_test_u    : a list whose elements consist of lower upper of the predictors for the test sample
-# predictor_test_r    : a list whose elements consist of half-ranges of the predictors for the test sample
-# nbf_response        : number of basis function for approximating response variable
-# nbf_vec_predictors  : a vector of number of basis function corresponding to predictors
+# response            : a matrix containing curves of the response variable 
+# response_l          : a matrix containing lower limit curves of the response variable
+# response_u          : a matrix containing upper limit curves of the response variable
+# response_r          : a matrix containing half-range curves of the response variable
+# predictor           : a list whose elements consist of the predictors (center)
+# predictor_l         : a list whose elements consist of lower limit curves of the predictors
+# predictor_u         : a list whose elements consist of upper limit curves of the predictors
+# predictor_r         : a list whose elements consist of half-range curves of the predictors
+# predictor_test      : a list whose elements consist of the predictors (center) (test sample)
+# predictor_test_l    : a list whose elements consist of lower limit curves of the predictors (test sample)
+# predictor_test_u    : a list whose elements consist of upper limit curves of the predictors (test sample)
+# predictor_test_r    : a list whose elements consist of half-range curves of the predictors (test sample)
+# nbf_response        : number of basis functions for approximating response variable
+# nbf_vec_predictors  : a vector of number of basis functions corresponding to the predictors
 # B                   : number of Monte Carlo simulations to be used in the MCM method
 
 iv_fof = function(response, response_l, response_u, response_r, predictor, predictor_l, predictor_u, predictor_r,
@@ -227,7 +227,7 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   Bhat_MCM = Bhat_MCM1/B
   ###################################### MCM End ###################################### 
   
-  # Model estimation
+  # Coefficient estimation
   coeff_c = ginv(t(Reg_mat)%*%Reg_mat) %*% t(Reg_mat)%*%W_y
   coeff_l = ginv(t(Reg_mat_l)%*%Reg_mat_l) %*% t(Reg_mat)%*%W_yl
   coeff_u = ginv(t(Reg_mat_u)%*%Reg_mat_u) %*% t(Reg_mat_u)%*%W_yu
