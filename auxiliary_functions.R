@@ -241,9 +241,6 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   pred_cm_l1 = Reg_mat_test_l %*% coeff_c
   pred_cm_u1 = Reg_mat_test_u %*% coeff_c
   
-  pred_crm_c = Reg_mat_test %*% coeff_c
-  pred_crm_r = Reg_mat_test_r %*% coeff_r
-  
   pred_bcrm_c = Reg_mat_test_bcrm %*% coeff_bcrm_c
   pred_bcrm_r = Reg_mat_test_bcrm %*% coeff_bcrm_r
   
@@ -256,9 +253,6 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
     
     pred_cm_l1[i,] = pred_cm_l1[i,] + mean_yl
     pred_cm_u1[i,] = pred_cm_u1[i,] + mean_yu
-    
-    pred_crm_c[i,] = pred_crm_c[i,] + mean_y
-    pred_crm_r[i,] = pred_crm_r[i,] + mean_yr
     
     pred_bcrm_c[i,] = pred_bcrm_c[i,] + mean_y
     pred_bcrm_r[i,] = pred_bcrm_r[i,] + mean_yr
@@ -273,11 +267,6 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   pred_cm_l = pred_cm_l1 %*% t(B_spline_basis_fun_y)
   pred_cm_u = pred_cm_u1 %*% t(B_spline_basis_fun_y)
   
-  pred_crm_l = pred_crm_c %*% t(B_spline_basis_fun_y) -
-    pred_crm_r %*% t(B_spline_basis_fun_y)
-  pred_crm_u = pred_crm_c %*% t(B_spline_basis_fun_y) +
-    pred_crm_r %*% t(B_spline_basis_fun_y)
-  
   pred_bcrm_l = pred_bcrm_c %*% t(B_spline_basis_fun_y) -
     pred_bcrm_r %*% t(B_spline_basis_fun_y)
   pred_bcrm_u = pred_bcrm_c %*% t(B_spline_basis_fun_y) +
@@ -287,8 +276,8 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   pred_mcm_u = pred_mcm_u1 %*% t(B_spline_basis_fun_y)
   
   return(list("flm_l" = pred_l, "flm_u" = pred_u, "cm_l" = pred_cm_l, "cm_u" = pred_cm_u,
-              "crm_l" = pred_crm_l, "crm_u" = pred_crm_u, "bcrm_l" = pred_bcrm_l, "bcrm_u" = pred_bcrm_u,
-              "mcm_l" = pred_mcm_l, "mcm_u" = pred_mcm_u, "Bhat_mcm" = Bhat_mcm, "mean_yl" = mean_yl,
+              "bcrm_l" = pred_bcrm_l, "bcrm_u" = pred_bcrm_u, "mcm_l" = pred_mcm_l,
+              "mcm_u" = pred_mcm_u, "Bhat_mcm" = Bhat_mcm, "mean_yl" = mean_yl,
               "mean_yu" = mean_yu, "B_spline_basis_fun_y" = B_spline_basis_fun_y, "W_yl" = W_yl_out,
               "W_yu" = W_yu_out, "Reg_mat_l" = Reg_mat_l, "Reg_mat_u" = Reg_mat_u, "Bhat_MCM" = Bhat_MCM))
   
