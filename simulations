@@ -1,0 +1,152 @@
+rm(list=ls())
+source("auxiliary_functions.R")
+
+# Number of basis functions for predictors
+nbf_vec_predictors = rep(10,2)
+# Number of basis functions for response
+nbf_response = 10
+# Number of Monte Carlo simulations
+B = 100
+# Number of simulations
+nsim = 100
+# Number of functions in the training and test samples
+n_train = 40
+n_test = 8
+
+mse_flm_l = numeric()
+mse_flm_u = numeric()
+mse_cm_l = numeric()
+mse_cm_u = numeric()
+mse_bcrm_l = numeric()
+mse_bcrm_u = numeric()
+mse_mcm_l = numeric()
+mse_msm_u = numeric()
+
+cp_l = numeric()
+cp_u = numeric()
+
+# Load datasets
+max_t = load("max_temperature.RData")
+min_t = load("min_temperature.RData")
+mean_t = load("mean_temperature.RData")
+hr_t = load("hr_temperature.RData")
+
+max_h = load("max_humidity.RData")
+min_h = load("min_humidity.RData")
+mean_h = load("mean_humidity.RData")
+hr_h = load("hr_humidity.RData")
+
+max_e = load("max_evaporation.RData")
+min_e = load("min_evaporation.RData")
+mean_e = load("mean_evaporation.RData")
+hr_e = load("hr_evaporation.RData")
+
+# List
+predictor_orig = list(mean_temperature, mean_humidity)
+predictor_l_orig = list(min_temperature, min_humidity)
+predictor_u_orig = list(max_temperature, max_humidity)
+predictor_r_orig = list(hr_temperature, hr_humidity)
+
+for(sim in 1:nsim){
+  test_samp = sample(1:(n_train+n_test), n_train, replace = FALSE)
+  
+  response = mean_evaporation[test_samp,]
+  response_l = min_evaporation[test_samp,]
+  response_u = max_evaporation[test_samp,]
+  response_r = hr_evaporation[test_samp,]
+  response_test_l = min_evaporation[-(test_samp),]
+  response_test_u = max_evaporation[-(test_samp),]
+  
+  predictor = list()
+  predictor_l = list()
+  predictor_u = list()
+  predictor_r = list()
+  predictor_test = list()
+  predictor_test_l = list()
+  predictor_test_u = list()
+  predictor_test_r = list()
+
+for(i in 1:2){
+  predictor[[i]] = predictor_orig[[i]][test_samp,]
+  predictor_l[[i]] = predictor_l_orig[[i]][test_samp,]
+  predictor_u[[i]] = predictor_u_orig[[i]][test_samp,]
+  predictor_r[[i]] = predictor_r_orig[[i]][test_samp,]
+  predictor_test[[i]] = predictor_orig[[i]][-(test_samp),]
+  predictor_test_l[[i]] = predictor_l_orig[[i]][-(test_samp),]
+  predictor_test_u[[i]] = predictor_u_orig[[i]][-(test_samp),]
+  predictor_test_r[[i]] = predictor_r_orig[[i]][-(test_samp),]
+  
+  
+}
+
+m_run = iv_fof(response, response_l, response_u, response_r, predictor, predictor_l, predictor_u, predictor_r,
+              predictor_test, predictor_test_l, predictor_test_u, predictor_test_r,
+              nbf_response, nbf_vec_predictors, B)
+
+mse_flm_l[sim] = mean((m_run$flm_l - response_test_l)^2)
+mse_flm_u[sim] = mean((m_run$flm_u - response_test_u)^2)
+mse_cm_l[sim] = mean((m_run$cm_l - response_test_l)^2)
+mse_cm_u[sim] = mean((m_run$cm_u - response_test_u)^2)
+mse_bcrm_l[sim] = mean((m_run$bcrm_l - response_test_l)^2)
+mse_bcrm_u[sim] = mean((m_run$bcrm_u - response_test_u)^2)
+mse_mcm_l[sim] = mean((m_run$mcm_l - response_test_l)^2)
+mse_msm_u[sim] = mean((m_run$mcm_u - response_test_u)^2)
+
+###################################### Prediction interval ###################################### 
+
+# Errors for lower and upper limit functions
+err_l = response_l - m_run$fits_mcm_l
+err_u = response_u - m_run$fits_mcm_u
+
+ci_l <- array(dim=c(nrow(predictor_test[[1]]),ncol(predictor_test[[1]]),B))
+ci_u <- array(dim=c(nrow(predictor_test[[1]]),ncol(predictor_test[[1]]),B))
+
+for(i in 1:B){
+  
+  fits_bi_l1 = m_run$Reg_mat_test_l %*% m_run$Bhat_mcm[,,i]
+  fits_bi_u1 = m_run$Reg_mat_test_u %*% m_run$Bhat_mcm[,,i]
+  
+  for(j in 1:nrow(predictor_test[[1]])){
+    
+    fits_bi_l1[j,] = fits_bi_l1[j,] + m_run$mean_yl
+    fits_bi_u1[j,] = fits_bi_u1[j,] + m_run$mean_yu
+  }
+  
+  ci_l[,,i] = fits_bi_l1 %*% t(m_run$B_spline_basis_fun_y) + err_l[sample(1:nrow(err_l), nrow(predictor_test[[1]]), replace=TRUE),]
+  ci_u[,,i] = fits_bi_u1 %*% t(m_run$B_spline_basis_fun_y) + err_u[sample(1:nrow(err_u), nrow(predictor_test[[1]]), replace=TRUE),]
+}
+
+ll_yhat = matrix(0, ncol=ncol(predictor_test[[1]]), nrow=nrow(predictor_test[[1]]))
+lu_yhat = matrix(0, ncol=ncol(predictor_test[[1]]), nrow=nrow(predictor_test[[1]]))
+
+ul_yhat = matrix(0, ncol=ncol(predictor_test[[1]]), nrow=nrow(predictor_test[[1]]))
+uu_yhat = matrix(0, ncol=ncol(predictor_test[[1]]), nrow=nrow(predictor_test[[1]]))
+
+for(k2 in 1:nrow(predictor_test[[1]])){
+  mi_l = matrix(0, nrow = B, ncol = ncol(predictor_test[[1]]))
+  mi_u = matrix(0, nrow = B, ncol = ncol(predictor_test[[1]]))
+  
+  for(k1 in 1:B){
+    mi_l[k1,] = ci_l[,,k1][k2,]
+    mi_u[k1,] = ci_u[,,k1][k2,]
+  }
+  
+  ll_yhat[k2,] = apply(mi_l, 2, quantile, probs=c(0.025), na.rm=TRUE)
+  lu_yhat[k2,] = apply(mi_l, 2, quantile, probs=c(0.975), na.rm=TRUE)
+  
+  ul_yhat[k2,] = apply(mi_u, 2, quantile, probs=c(0.025), na.rm=TRUE)
+  uu_yhat[k2,] = apply(mi_u, 2, quantile, probs=c(0.975), na.rm=TRUE)
+}
+
+my_sum_l = matrix(0, nrow = nrow(predictor_test[[1]]), ncol=ncol(predictor_test[[1]]))
+my_sum_u = matrix(0, nrow = nrow(predictor_test[[1]]), ncol=ncol(predictor_test[[1]]))
+
+for(sm in 1:nrow(predictor_test[[1]])){
+  my_sum_l[sm,] = ifelse(ll_yhat[sm,] <= response_test_l[sm,] & response_test_l[sm,] <= lu_yhat[sm,], 1,0)
+  my_sum_u[sm,] = ifelse(ul_yhat[sm,] <= response_test_u[sm,] & response_test_u[sm,] <= uu_yhat[sm,], 1,0)
+}
+
+cp_l[sim] <- sum(my_sum_l)/(nrow(predictor_test[[1]])*ncol(predictor_test[[1]]))
+cp_u[sim] <- sum(my_sum_u)/(nrow(predictor_test[[1]])*ncol(predictor_test[[1]]))
+#################################################################################################
+}
