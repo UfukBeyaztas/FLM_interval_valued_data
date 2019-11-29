@@ -2,20 +2,22 @@
 library(fda)
 library(MASS)
 
-# response            : a matrix containing curves of the response variable 
-# response_l          : a matrix containing lower limit curves of the response variable
-# response_u          : a matrix containing upper limit curves of the response variable
-# response_r          : a matrix containing half-range curves of the response variable
-# predictor           : a list whose elements consist of the predictors (center)
-# predictor_l         : a list whose elements consist of lower limit curves of the predictors
-# predictor_u         : a list whose elements consist of upper limit curves of the predictors
-# predictor_r         : a list whose elements consist of half-range curves of the predictors
-# predictor_test      : a list whose elements consist of the predictors (center) (test sample)
-# predictor_test_l    : a list whose elements consist of lower limit curves of the predictors (test sample)
-# predictor_test_u    : a list whose elements consist of upper limit curves of the predictors (test sample)
-# predictor_test_r    : a list whose elements consist of half-range curves of the predictors (test sample)
-# nbf_response        : number of basis functions for approximating response variable
-# nbf_vec_predictors  : a vector of number of basis functions corresponding to the predictors
+# Function to estimate coefficient matrix B
+
+# response            : a matrix containing response curves (center)
+# response_l          : a matrix containing lower limits of the response curves
+# response_u          : a matrix containing upper limits of the response curves
+# response_r          : a matrix containing half-ranges of the response curves
+# predictor           : a list whose elements consist of predictors (center)
+# predictor_l         : a list whose elements consist of lower limits of the predictors
+# predictor_u         : a list whose elements consist of upper limits of the predictors
+# predictor_r         : a list whose elements consist of half-ranges of the predictors
+# predictor_test      : a list whose elements consist of predictors (center) for the test sample
+# predictor_test_l    : a list whose elements consist of lower limits of the predictors for the test sample
+# predictor_test_u    : a list whose elements consist of lower upper of the predictors for the test sample
+# predictor_test_r    : a list whose elements consist of half-ranges of the predictors for the test sample
+# nbf_response        : number of basis function for approximating response variable
+# nbf_vec_predictors  : a vector of number of basis function corresponding to predictors
 # B                   : number of Monte Carlo simulations to be used in the MCM method
 
 iv_fof = function(response, response_l, response_u, response_r, predictor, predictor_l, predictor_u, predictor_r,
@@ -26,10 +28,10 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   np = length(predictor_test)
   
   # Discrete time points
-  dtp = seq(0, 1, length=ncol(response))
+  dtp = c(1:ncol(response))
   
   # B-spline for response
-  B_spline_basis_y = create.bspline.basis(c(0,1), nbasis = nbf_response)
+  B_spline_basis_y = create.bspline.basis(c(1,ncol(response)), nbasis = nbf_response)
   B_spline_basis_fun_y = eval.basis(dtp, B_spline_basis_y)
   
   # B-spline for predictors
@@ -37,7 +39,7 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   B_spline_basis_funs_x = vector("list",)
   
   for(i in 1:np){
-    B_spline_basis_x[[i]] = create.bspline.basis(c(0,1), nbasis = nbf_vec_predictors[i])
+    B_spline_basis_x[[i]] = create.bspline.basis(c(1,ncol(response)), nbasis = nbf_vec_predictors[i])
     B_spline_basis_funs_x[[i]] = eval.basis(dtp, B_spline_basis_x[[i]])
   }
   
@@ -123,11 +125,15 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
     W_xl[[i]][j,] = W_xl[[i]][j,] - mean_xl[[i]]
     W_xu[[i]][j,] = W_xu[[i]][j,] - mean_xu[[i]]
     W_xr[[i]][j,] = W_xr[[i]][j,] - mean_xr[[i]]
-    
-    W_x_test[[i]][j,] = W_x_test[[i]][j,] - mean_x_test[[i]]
-    W_xl_test[[i]][j,] = W_xl_test[[i]][j,] - mean_xl_test[[i]]
-    W_xu_test[[i]][j,] = W_xu_test[[i]][j,] - mean_xu_test[[i]]
-    W_xr_test[[i]][j,] = W_xr_test[[i]][j,] - mean_xr_test[[i]]
+    }
+  }
+  
+  for(i in 1:np){
+    for(j in 1:nrow(predictor_test[[1]])){
+      W_x_test[[i]][j,] = W_x_test[[i]][j,] - mean_x_test[[i]]
+      W_xl_test[[i]][j,] = W_xl_test[[i]][j,] - mean_xl_test[[i]]
+      W_xu_test[[i]][j,] = W_xu_test[[i]][j,] - mean_xu_test[[i]]
+      W_xr_test[[i]][j,] = W_xr_test[[i]][j,] - mean_xr_test[[i]]
     }
   }
 
@@ -227,7 +233,7 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   Bhat_MCM = Bhat_MCM1/B
   ###################################### MCM End ###################################### 
   
-  # Coefficient estimation
+  # Model estimation
   coeff_c = ginv(t(Reg_mat)%*%Reg_mat) %*% t(Reg_mat)%*%W_y
   coeff_l = ginv(t(Reg_mat_l)%*%Reg_mat_l) %*% t(Reg_mat)%*%W_yl
   coeff_u = ginv(t(Reg_mat_u)%*%Reg_mat_u) %*% t(Reg_mat_u)%*%W_yu
@@ -264,21 +270,50 @@ iv_fof = function(response, response_l, response_u, response_r, predictor, predi
   pred_l = pred_l1 %*% t(B_spline_basis_fun_y)
   pred_u = pred_u1 %*% t(B_spline_basis_fun_y)
   
-  pred_cm_l = pred_cm_l1 %*% t(B_spline_basis_fun_y)
-  pred_cm_u = pred_cm_u1 %*% t(B_spline_basis_fun_y)
+  pred_cm_l_in = pred_cm_l1 %*% t(B_spline_basis_fun_y)
+  pred_cm_u_in = pred_cm_u1 %*% t(B_spline_basis_fun_y)
   
   pred_bcrm_l = pred_bcrm_c %*% t(B_spline_basis_fun_y) -
     pred_bcrm_r %*% t(B_spline_basis_fun_y)
   pred_bcrm_u = pred_bcrm_c %*% t(B_spline_basis_fun_y) +
     pred_bcrm_r %*% t(B_spline_basis_fun_y)
   
-  pred_mcm_l = pred_mcm_l1 %*% t(B_spline_basis_fun_y)
-  pred_mcm_u = pred_mcm_u1 %*% t(B_spline_basis_fun_y)
+  pred_mcm_l_in = pred_mcm_l1 %*% t(B_spline_basis_fun_y)
+  pred_mcm_u_in = pred_mcm_u1 %*% t(B_spline_basis_fun_y)
+  
+  pred_cm_l = matrix(0, nrow=nrow(pred_cm_l_in), ncol=ncol(pred_cm_l_in))
+  pred_cm_u = matrix(0, nrow=nrow(pred_cm_u_in), ncol=ncol(pred_cm_u_in))
+  
+  pred_mcm_l = matrix(0, nrow=nrow(pred_mcm_l_in), ncol=ncol(pred_mcm_l_in))
+  pred_mcm_u = matrix(0, nrow=nrow(pred_mcm_u_in), ncol=ncol(pred_mcm_u_in))
+  
+  for(i in 1:nrow(predictor_test[[1]])){
+    for(j in 1:ncol(predictor_test[[1]])){
+    pred_cm_l[i,j] = min(pred_cm_l_in[i,j], pred_cm_u_in[i,j])
+    pred_cm_u[i,j] = max(pred_cm_l_in[i,j], pred_cm_u_in[i,j])
+    
+    pred_mcm_l[i,j] = min(pred_mcm_l_in[i,j], pred_mcm_u_in[i,j])
+    pred_mcm_u[i,j] = max(pred_mcm_l_in[i,j], pred_mcm_u_in[i,j])
+    }
+  }
+  
+  # Fitted functions by MCM
+  fits_mcm_l1 = Reg_mat_l %*% Bhat_MCM
+  fits_mcm_u1 = Reg_mat_u %*% Bhat_MCM
+  
+  for(i in 1:nrow(response)){
+    fits_mcm_l1[i,] = fits_mcm_l1[i,] + mean_yl
+    fits_mcm_u1[i,] = fits_mcm_u1[i,] + mean_yu
+  }
+  
+  fits_mcm_l = fits_mcm_l1 %*% t(B_spline_basis_fun_y)
+  fits_mcm_u = fits_mcm_u1 %*% t(B_spline_basis_fun_y)
   
   return(list("flm_l" = pred_l, "flm_u" = pred_u, "cm_l" = pred_cm_l, "cm_u" = pred_cm_u,
-              "bcrm_l" = pred_bcrm_l, "bcrm_u" = pred_bcrm_u, "mcm_l" = pred_mcm_l,
-              "mcm_u" = pred_mcm_u, "Bhat_mcm" = Bhat_mcm, "mean_yl" = mean_yl,
+              "crm_l" = pred_crm_l, "crm_u" = pred_crm_u, "bcrm_l" = pred_bcrm_l, "bcrm_u" = pred_bcrm_u,
+              "mcm_l" = pred_mcm_l, "mcm_u" = pred_mcm_u, "Bhat_mcm" = Bhat_mcm, "mean_yl" = mean_yl,
               "mean_yu" = mean_yu, "B_spline_basis_fun_y" = B_spline_basis_fun_y, "W_yl" = W_yl_out,
-              "W_yu" = W_yu_out, "Reg_mat_l" = Reg_mat_l, "Reg_mat_u" = Reg_mat_u, "Bhat_MCM" = Bhat_MCM))
+              "W_yu" = W_yu_out, "fits_mcm_l" = fits_mcm_l, "fits_mcm_u" = fits_mcm_u,
+              "Reg_mat_test_l" = Reg_mat_test_l, "Reg_mat_test_u" = Reg_mat_test_u, "Bhat_MCM" = Bhat_MCM))
   
 }
